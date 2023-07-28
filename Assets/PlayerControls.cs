@@ -11,6 +11,9 @@ public class PlayerControls : MonoBehaviour
     public Transform groundCheck;
     public LayerMask groundLayer;
 
+    public Transform ChargeMeterPivot;
+    public ChargeMeter chargeMeter;
+
     public float chargingJumpSpeed = 0.2f;
     public float MaxJumpCharge = 10f;
     private float totalJumpCharge = 0f;
@@ -21,6 +24,8 @@ public class PlayerControls : MonoBehaviour
     private bool charging = true;
     private bool doJump = false;
 
+    private Vector2 mousePosition;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -28,6 +33,8 @@ public class PlayerControls : MonoBehaviour
 
     private void Update()
     {
+        mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        Vector2 VectorToMousePos = mousePosition - new Vector2(transform.position.x, transform.position.y);
         //float moveInput = Input.GetAxis("Horizontal");
         //rb.velocity = new Vector2(moveInput * moveSpeed, rb.velocity.y);
 
@@ -37,27 +44,32 @@ public class PlayerControls : MonoBehaviour
         {
             rb.AddForce(new Vector2(0f, jumpForce), ForceMode2D.Impulse);
         }*/
-        if(isGrounded)
+
+        if (isGrounded)
         {
             if (Input.GetMouseButton(0))
             {
                 charging = true;
                 totalJumpCharge += chargingJumpSpeed;
                 if (totalJumpCharge > MaxJumpCharge) totalJumpCharge = MaxJumpCharge;
+                chargeMeter.percentageFull = totalJumpCharge / MaxJumpCharge;
             }
             else if(charging == true)
             {
                 doJump = true;
                 charging = false;
+                chargeMeter.percentageFull = 0f;
             }
-
+            
+            
+            float angle = Mathf.Atan2(VectorToMousePos.y, VectorToMousePos.x) * Mathf.Rad2Deg;
+            ChargeMeterPivot.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
         }
 
 
 
         if (doJump && isGrounded)
         {
-            Vector2 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
          
             Vector2 directionToClick = mousePosition - new Vector2(transform.position.x, transform.position.y);
             directionToClick.Normalize();
