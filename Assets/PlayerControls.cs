@@ -11,8 +11,15 @@ public class PlayerControls : MonoBehaviour
     public Transform groundCheck;
     public LayerMask groundLayer;
 
+    public float chargingJumpSpeed = 0.2f;
+    public float MaxJumpCharge = 10f;
+    private float totalJumpCharge = 0f;
+
 
     private bool isGrounded;
+
+    private bool charging = true;
+    private bool doJump = false;
 
     private void Awake()
     {
@@ -30,15 +37,35 @@ public class PlayerControls : MonoBehaviour
         {
             rb.AddForce(new Vector2(0f, jumpForce), ForceMode2D.Impulse);
         }*/
+        if(isGrounded)
+        {
+            if (Input.GetMouseButton(0))
+            {
+                charging = true;
+                totalJumpCharge += chargingJumpSpeed;
+                if (totalJumpCharge > MaxJumpCharge) totalJumpCharge = MaxJumpCharge;
+            }
+            else if(charging == true)
+            {
+                doJump = true;
+                charging = false;
+            }
 
-        if (isGrounded && Input.GetMouseButtonDown(0))
+        }
+
+
+
+        if (doJump && isGrounded)
         {
             Vector2 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
          
             Vector2 directionToClick = mousePosition - new Vector2(transform.position.x, transform.position.y);
             directionToClick.Normalize();
             Debug.Log(directionToClick);
-            rb.AddForce(directionToClick * jumpForce, ForceMode2D.Impulse);
+            Debug.Log(totalJumpCharge);
+            rb.AddForce(directionToClick * totalJumpCharge, ForceMode2D.Impulse);
+            totalJumpCharge = 0f;
+            doJump = false;
         }
     }
 

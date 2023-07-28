@@ -257,6 +257,8 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 1024
+  chargingJumpSpeed: 0.1
+  MaxJumpCharge: 40
 --- !u!61 &138433527
 BoxCollider2D:
   m_ObjectHideFlags: 0
