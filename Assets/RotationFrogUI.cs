@@ -28,8 +28,9 @@ public class RotationFrogUI : MonoBehaviour
 
     void Update()
     {
-        if (RightHeld) angularVelocity -= angularVelocityChange;
-        if (LeftHeld) angularVelocity += angularVelocityChange;
+        float rot = Input.GetAxis("Horizontal");
+        if (RightHeld || rot > 0.5f) angularVelocity -= angularVelocityChange;
+        if (LeftHeld || rot < -0.5f) angularVelocity += angularVelocityChange;
         transform.eulerAngles = transform.eulerAngles += new Vector3(0f, 0f, angularVelocity * Time.deltaTime);
 
     }

@@ -15,6 +15,11 @@ public class PlayerControls : MonoBehaviour
     public Transform ChargeMeterPivot;
     public ChargeMeter chargeMeter;
 
+    public GameObject frogProjectionPrefab;
+    public float numberOfProjections = 5;
+    public float timeBetweenProjections = 0.3f;
+    private List<GameObject> frogProjectionPrefabs = new List<GameObject>();
+
     public RotationFrogUI rotationFrogUI;
 
     public float chargingJumpSpeed = 0.2f;
@@ -27,6 +32,7 @@ public class PlayerControls : MonoBehaviour
     private bool isGrounded;
 
     private bool charging = true;
+    private bool reverseCharging = false;
     private bool doJump = false;
 
     private Vector2 mousePosition;
@@ -37,9 +43,17 @@ public class PlayerControls : MonoBehaviour
     public float landedDistance = 0.2f;
     public float landingAngleDegrees = 30f;
 
+    private bool gravity = true;
+    public float gravitySize = 0.2f;
+
     private void Awake()
     {
-        rb = GetComponent<Rigidbody2D>();
+        for(int x = 0; x < numberOfProjections; x++)
+        {
+            GameObject newPrefab = Instantiate(frogProjectionPrefab, new Vector3(-1000, -1000, -1000), Quaternion.identity);
+            frogProjectionPrefabs.Add(newPrefab);
+            rb = GetComponent<Rigidbody2D>();
+        }
     }
 
     private bool AreVectorsParallel(Vector2 vectorA, Vector2 vectorB)
@@ -51,6 +65,61 @@ public class PlayerControls : MonoBehaviour
         return Mathf.Abs(angleDegrees) <= landingAngleDegrees;
     }
 
+    private Vector2 simulatePhysicsPos(Vector2 velocity, Vector2 position, float time)
+    {
+        Vector2 acceleration = new Vector2(0f, 0f);
+        acceleration += Vector2.down * gravitySize * Time.deltaTime;
+        Vector2 endPos = position + (velocity * time) + (0.5f * acceleration * time);
+        return endPos;
+    }
+    private float simulatePhysicsRot(float angularVelocity, float time)
+    {
+        return angularVelocity * time;
+    }
+
+    public static void PredictPositionAndRotation(Rigidbody2D rb, Vector2 initialVelocity, float initialAngularVelocity, float timeInSeconds, out Vector2 predictedPosition, out float predictedRotation)
+    {
+        Vector2 initialPosition = rb.position;
+        //Vector2 initialVelocity = rb.velocity;
+        float gravity = Physics2D.gravity.y; // Get the y component of gravity
+
+        // Calculate the predicted position after the given time
+        predictedPosition = initialPosition + initialVelocity * timeInSeconds + 0.5f * Vector2.up * gravity * 5f * timeInSeconds * timeInSeconds;
+
+        // Calculate the predicted rotation after the given time
+        predictedRotation = rb.rotation + initialAngularVelocity * timeInSeconds;
+    }
+
+    private void projection(Vector2 ivelocity)
+    {
+        float angVelocity = rotationFrogUI.angularVelocity;
+
+        int i = 0;
+        foreach (GameObject m in frogProjectionPrefabs)
+        {
+            Vector2 predictedPosition;
+            float predictedRotation;
+            m.SetActive(true);
+            PredictPositionAndRotation(rb, ivelocity, angVelocity, (i + 1) * timeBetweenProjections, out predictedPosition, out predictedRotation);
+            m.transform.position = predictedPosition;
+            m.transform.rotation = Quaternion.Euler(0f,0f,predictedRotation);
+            i++;
+        }
+    }
+    private void endProjection()
+    {
+        foreach(GameObject m in frogProjectionPrefabs)
+        {
+            m.SetActive(false);
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        //rb.position = simulatePhysicsPos(rb.velocity, rb.position, Time.deltaTime);
+        //rb.rotation = simulatePhysicsRot(rb.angularVelocity, Time.deltaTime);
+    }
+
     private void Update()
     {
         mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -58,6 +127,12 @@ public class PlayerControls : MonoBehaviour
         Vector2 VectorToMousePos = mousePosition - new Vector2(transform.position.x, transform.position.y);
         //float moveInput = Input.GetAxis("Horizontal");
         //rb.velocity = new Vector2(moveInput * moveSpeed, rb.velocity.y);
+
+        /*if(gravity)
+        {
+            rb.velocity += Vector2.down * gravitySize * Time.deltaTime;
+        }*/
+        
 
         RaycastHit2D hit = Physics2D.Raycast(groundCheck.position, -up, landedDistance, groundLayer);
         Debug.DrawRay(groundCheck.position, -up, Color.red, 2f);
@@ -92,13 +167,24 @@ public class PlayerControls : MonoBehaviour
         {
             //rb.velocity = new Vector2(0f, 0f);
             //rb.angularVelocity = 0f;
+            if (Input.GetMouseButton(1)) { charging = false; totalJumpCharge = 0; endProjection(); return; }
             if (Input.GetMouseButton(0))
             {
                 if (EventSystem.current.IsPointerOverGameObject()) return;
                 charging = true;
-                totalJumpCharge += chargingJumpSpeed;
-                if (totalJumpCharge > MaxJumpCharge) totalJumpCharge = MaxJumpCharge;
+                if(reverseCharging)
+                    totalJumpCharge -= chargingJumpSpeed;
+                else
+                    totalJumpCharge += chargingJumpSpeed;
+
+                if (totalJumpCharge > MaxJumpCharge) reverseCharging = true;
+                if (totalJumpCharge < 0) reverseCharging = false;
                 chargeMeter.percentageFull = totalJumpCharge / MaxJumpCharge;
+
+                Vector2 directionToClick = mousePosition - new Vector2(transform.position.x, transform.position.y);
+                directionToClick.Normalize();
+                projection(directionToClick * totalJumpCharge);
+
             }
             else if(charging == true)
             {
@@ -119,13 +205,15 @@ public class PlayerControls : MonoBehaviour
             
             Vector2 directionToClick = mousePosition - new Vector2(transform.position.x, transform.position.y);
             directionToClick.Normalize();
-            rb.AddForce(directionToClick * totalJumpCharge, ForceMode2D.Impulse);
+            //rb.AddForce(directionToClick * totalJumpCharge, ForceMode2D.Impulse);
+            rb.velocity = directionToClick * totalJumpCharge;
             rb.angularVelocity = rotationFrogUI.angularVelocity;
             totalJumpCharge = 0f;
             doJump = false;
             DontLandYetTimer = DontLandYetTime;
             rb.gravityScale = 5f;
             isGrounded = false;
+            endProjection();
         }
     }
 
@@ -140,4 +228,6 @@ public class PlayerControls : MonoBehaviour
         // Check if the player leaves the ground
         isGrounded = false;
     }*/
+
 }
+
