@@ -263,7 +263,7 @@ GameObject:
   - component: {fileID: 5697102895123450051}
   - component: {fileID: 5275191236090604519}
   m_Layer: 0
-  m_Name: Player
+  m_Name: Projection
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

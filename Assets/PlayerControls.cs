@@ -24,7 +24,8 @@ public class PlayerControls : MonoBehaviour
 
     public float chargingJumpSpeed = 0.2f;
     public float MaxJumpCharge = 10f;
-    private float totalJumpCharge = 0f;
+    public float MinJumpCharge = 3f;
+    private float totalJumpCharge = 3f;
 
     private float jumpRotation = 0f;
 
@@ -167,18 +168,19 @@ public class PlayerControls : MonoBehaviour
         {
             //rb.velocity = new Vector2(0f, 0f);
             //rb.angularVelocity = 0f;
-            if (Input.GetMouseButton(1)) { charging = false; totalJumpCharge = 0; endProjection(); return; }
+            if (Input.GetMouseButton(1)) { charging = false; totalJumpCharge = MinJumpCharge; endProjection(); return; }
             if (Input.GetMouseButton(0))
             {
                 if (EventSystem.current.IsPointerOverGameObject()) return;
                 charging = true;
+
                 if(reverseCharging)
                     totalJumpCharge -= chargingJumpSpeed;
                 else
                     totalJumpCharge += chargingJumpSpeed;
 
                 if (totalJumpCharge > MaxJumpCharge) reverseCharging = true;
-                if (totalJumpCharge < 0) reverseCharging = false;
+                if (totalJumpCharge < MinJumpCharge) reverseCharging = false;
                 chargeMeter.percentageFull = totalJumpCharge / MaxJumpCharge;
 
                 Vector2 directionToClick = mousePosition - new Vector2(transform.position.x, transform.position.y);
@@ -208,7 +210,7 @@ public class PlayerControls : MonoBehaviour
             //rb.AddForce(directionToClick * totalJumpCharge, ForceMode2D.Impulse);
             rb.velocity = directionToClick * totalJumpCharge;
             rb.angularVelocity = rotationFrogUI.angularVelocity;
-            totalJumpCharge = 0f;
+            totalJumpCharge = MinJumpCharge;
             doJump = false;
             DontLandYetTimer = DontLandYetTime;
             rb.gravityScale = 5f;
