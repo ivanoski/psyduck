@@ -31,19 +31,57 @@ public class PlayerControls : MonoBehaviour
 
     private Vector2 mousePosition;
 
+    private float DontLandYetTimer = 0f;
+    public float DontLandYetTime = 0.2f;
+
+    public float landedDistance = 0.2f;
+    public float landingAngleDegrees = 30f;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
     }
 
+    private bool AreVectorsParallel(Vector2 vectorA, Vector2 vectorB)
+    {
+        float dotProduct = Vector2.Dot(vectorA.normalized, vectorB.normalized);
+        float angle = Mathf.Acos(dotProduct);
+        float angleDegrees = angle * Mathf.Rad2Deg;
+
+        return Mathf.Abs(angleDegrees) <= landingAngleDegrees;
+    }
+
     private void Update()
     {
         mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        Vector2 up = new Vector2(transform.up.x, transform.up.y);
         Vector2 VectorToMousePos = mousePosition - new Vector2(transform.position.x, transform.position.y);
         //float moveInput = Input.GetAxis("Horizontal");
         //rb.velocity = new Vector2(moveInput * moveSpeed, rb.velocity.y);
 
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, 0.1f, groundLayer);
+        RaycastHit2D hit = Physics2D.Raycast(groundCheck.position, -up, landedDistance, groundLayer);
+        Debug.DrawRay(groundCheck.position, -up, Color.red, 2f);
+        //if (hit) Debug.Log(hit + "hit");
+        //if (DontLandYetTimer <= 0f) Debug.Log("DontLandYetTimer");
+        if (!isGrounded) Debug.Log("!isGrounded");
+
+
+        if (hit && DontLandYetTimer <= 0f && !isGrounded)
+        {
+            Debug.Log(hit.normal + " " + up);
+            if(AreVectorsParallel(hit.normal, up))
+            {
+                Debug.Log("got here!");
+                isGrounded = true;
+                rb.velocity = Vector2.zero;
+                rb.angularVelocity = 0f;
+                rb.gravityScale = 0f;
+            }
+        }
+
+        //isGrounded = Physics2D.OverlapCircle(groundCheck.position, 0.1f, groundLayer) && (DontLandYetTimer <= 0f);
+
+        if (DontLandYetTimer > 0f) DontLandYetTimer -= Time.deltaTime;
 
         /*if (isGrounded && Input.GetButtonDown("Jump"))
         {
@@ -81,12 +119,13 @@ public class PlayerControls : MonoBehaviour
             
             Vector2 directionToClick = mousePosition - new Vector2(transform.position.x, transform.position.y);
             directionToClick.Normalize();
-            Debug.Log(directionToClick);
-            Debug.Log(totalJumpCharge);
             rb.AddForce(directionToClick * totalJumpCharge, ForceMode2D.Impulse);
             rb.angularVelocity = rotationFrogUI.angularVelocity;
             totalJumpCharge = 0f;
             doJump = false;
+            DontLandYetTimer = DontLandYetTime;
+            rb.gravityScale = 5f;
+            isGrounded = false;
         }
     }
 
